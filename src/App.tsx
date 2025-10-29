@@ -11,7 +11,7 @@ import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
 import { Upload } from './pages/Upload';
 import { Forecast } from './pages/Forecast';
-import { BusinessInsights } from './pages/BusinessInsights';
+import { BusinessInsightsPlotly } from './pages/BusinessInsights';
 
 function App() {
   return (
@@ -67,7 +67,7 @@ function App() {
                   path="/insights"
                   element={
                     <ProtectedRoute>
-                      <BusinessInsights />
+                      <BusinessInsightsPlotly />
                     </ProtectedRoute>
                   }
                 />

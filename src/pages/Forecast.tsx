@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Sparkles } from 'lucide-react';
+import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Sparkles, IndianRupee } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
 import apiFetch from '../lib/api';
@@ -24,10 +24,8 @@ export function Forecast() {
     city: '',
     product: '',
     category: '',
-    priceMin: '',
-    priceMax: '',
-    discountMin: '',
-    discountMax: '',
+    price: '',
+    discount: '',
   });
   const [cities, setCities] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
@@ -116,8 +114,8 @@ export function Forecast() {
         product: filters.product,
         city: filters.city,
         num_days: forecastDays,
-        price: filters.priceMax ? parseFloat(filters.priceMax) : undefined,
-        discount: filters.discountMax ? parseFloat(filters.discountMax) : undefined,
+        price: filters.price ? parseFloat(filters.price) : undefined,
+        discount: filters.discount ? parseFloat(filters.discount) : undefined,
       };
       console.log("payload: ", payload)
       const response = await fetch('http://localhost:8000/train/predict',
@@ -223,26 +221,9 @@ export function Forecast() {
   
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-200 mb-2">Dataset</label>
-                <select
-                  value={selectedDataset}
-                  onChange={(e) => setSelectedDataset(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-950/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  aria-label="Select a dataset"
-                >
-                  <option value="">Choose a dataset...</option>
-                  {datasets.map((dataset) => (
-                    <option key={dataset.id} value={dataset.id}>
-                      {dataset.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-  
-              <div>
                 <label className="block text-sm font-medium text-gray-200 mb-2">Forecast Duration</label>
                 <div className="grid grid-cols-5 gap-2">
-                  {[7, 15, 30, 60, 90].map((days) => (
+                  {[30, 60, 90, ].map((days) => (
                     <button
                       key={days}
                       onClick={() => setForecastDays(days)}
@@ -272,7 +253,7 @@ export function Forecast() {
               {showFilters && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-growIn">
                   <div>
-                    <label className="block text-sm font-medium text-gray-200 mb-2 items-center gap-2">
+                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <MapPin className="w-4 h-4 animate-pulseConstellation" />
                       City
                     </label>
@@ -292,7 +273,7 @@ export function Forecast() {
                   </div>
   
                   <div>
-                    <label className="block text-sm font-medium text-gray-200 mb-2 items-center gap-2">
+                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <Filter className="w-4 h-4 animate-pulseConstellation" />
                       Category
                     </label>
@@ -312,7 +293,7 @@ export function Forecast() {
                   </div>
                       
                   <div>
-                    <label className="block text-sm font-medium text-gray-200 mb-2 items-center gap-2">
+                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <Package className="w-4 h-4 animate-pulseConstellation" />
                       Product
                     </label>
@@ -332,51 +313,35 @@ export function Forecast() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-200 mb-2 items-center gap-2">
-                      <DollarSign className="w-4 h-4 animate-pulseConstellation" />
+                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
+                      <IndianRupee className="w-4 h-4 animate-pulseConstellation" />
                       Price Range
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        value={filters.priceMin}
-                        onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
-                        placeholder="Min ($)"
+                        value={filters.price}
+                        onChange={(e) => setFilters({ ...filters, price: e.target.value })}
+                        placeholder="Price (in rupees)"
                         className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Minimum price filter"
-                      />
-                      <input
-                        type="number"
-                        value={filters.priceMax}
-                        onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
-                        placeholder="Max ($)"
-                        className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Maximum price filter"
+                        aria-label="Price filter"
                       />
                     </div>
                   </div>
   
                   <div>
-                    <label className="block text-sm font-medium text-gray-200 mb-2 items-center gap-2">
+                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <Percent className="w-4 h-4 animate-pulseConstellation" />
-                      Discount Range
+                      Discount
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        value={filters.discountMin}
-                        onChange={(e) => setFilters({ ...filters, discountMin: e.target.value })}
-                        placeholder="Min (%)"
+                        value={filters.discount}
+                        onChange={(e) => setFilters({ ...filters, discount: e.target.value })}
+                        placeholder="Discount (in %)"
                         className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Minimum discount filter"
-                      />
-                      <input
-                        type="number"
-                        value={filters.discountMax}
-                        onChange={(e) => setFilters({ ...filters, discountMax: e.target.value })}
-                        placeholder="Max (%)"
-                        className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Maximum discount filter"
+                        aria-label="Discount filter"
                       />
                     </div>
                   </div>
