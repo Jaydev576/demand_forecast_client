@@ -5,8 +5,8 @@ export function Footer() {
   return (
     <footer className="border-t border-white/5 bg-gray-950/80 backdrop-blur-2xl mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="col-span-1 md:col-span-2">
+        <div className="grid grid-cols-4 md:grid-cols-4 gap-8">
+          <div className="col-span-4 md:col-span-2">
             <Link to="/" className="flex items-center gap-2 group mb-4">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
@@ -35,85 +35,25 @@ export function Footer() {
                 <Linkedin className="w-4 h-4" />
               </a>
               <a
-                href="#"
+                href="https://github.com/dhruvrohit229/Demand_Forecast_Backend"
                 className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
               >
                 <Github className="w-4 h-4" />
               </a>
               <a
-                href="#"
+                href="mailto: het2122005@gmail.com"
                 className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
               >
                 <Mail className="w-4 h-4" />
               </a>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Product</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link to="/features" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link to="/pricing" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link to="/docs" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link to="/api" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  API
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Company</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link to="/about" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link to="/careers" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
-                  Careers
-                </Link>
-              </li>
-            </ul>
-          </div>
         </div>
 
-        <div className="border-t border-white/5 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="border-t border-white/5 mt-12 pt-4 flex flex-col justify-between items-center gap-4">
           <p className="text-gray-500 text-sm">
             © 2025 ForecastIQ. All rights reserved.
           </p>
-          <div className="flex items-center gap-6">
-            <Link to="/privacy" className="text-gray-500 hover:text-gray-400 text-sm transition-colors">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="text-gray-500 hover:text-gray-400 text-sm transition-colors">
-              Terms of Service
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

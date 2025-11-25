@@ -12,7 +12,7 @@ export function Signup() {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const { showToast } = useToast();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +34,7 @@ export function Signup() {
       showToast(error.detail || "Internal server error", 'error');
     } else {
       showToast('Please check your email to verify your account', 'info');
-      // navigate('/dashboard');
+      navigate('/login');
     }
   };
 

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { TrendingUp, LogOut, Menu, X, LayoutDashboard, Upload, BarChart3, Lightbulb } from 'lucide-react';
+import { TrendingUp, LogOut, Menu, X, Upload, BarChart3, Lightbulb } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { useToast } from '../contexts/ToastContext';
@@ -20,7 +20,6 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   const navLinks = user ? [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/upload', icon: Upload, label: 'Upload Data' },
     { to: '/forecast', icon: BarChart3, label: 'Forecast' },
     { to: '/insights', icon: Lightbulb, label: 'Business Insights' },

@@ -16,7 +16,7 @@ export function RedirectIfAuthenticated({ children }: { children: React.ReactNod
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/forecast" replace />;
   }
 
   return <>{children}</>;

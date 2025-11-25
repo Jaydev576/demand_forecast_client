@@ -22,7 +22,7 @@ export function Login() {
       setLoading(false);
     } else {
       showToast('Welcome back!', 'success');
-      navigate('/dashboard');
+      navigate('/upload');
     }
   };
 
