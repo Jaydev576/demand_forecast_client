@@ -37,15 +37,15 @@ export function Dashboard() {
 
   const fetchForecasts = async () => {
     try {
-      const { data, status } = await apiFetch('user/models/status', {
+      const { data, status, error } = await apiFetch('user/models/status', {
         method: 'GET',
       });
+      // console.log(data, error)
       if (status !== 200) {
-        throw new Error('Failed to fetch forecasts');
+        showToast(error.detail || 'Failed to fetch forecasts', 'error');
+        return;
       }
-
-      // const data = await response.json();
-      console.log(data)
+      // console.log(data)
       setForecasts(data || []);
 
       const completed = data?.filter((f: Forecast) => f.status === 'completed').length || 0;
@@ -59,7 +59,7 @@ export function Dashboard() {
         failed,
       });
     } catch (error: any) {
-      showToast(error.details || 'Failed to fetch forecasts', 'error');
+      showToast('Error fetching forecasts', 'error');
     } finally {
       setLoading(false);
     }

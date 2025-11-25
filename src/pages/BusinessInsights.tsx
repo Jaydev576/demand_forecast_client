@@ -33,8 +33,9 @@ export function BusinessInsightsPlotly(): JSX.Element {
   const fetchData = async () => {
     setLoading(true);
     const { data: d, error } = await apiFetch('insights');
+    // console.log(d, error)
     if (error) {
-      showToast('Error fetching insights data: ' + error.message, 'error');
+      showToast('Error fetching insights data: ' + error.detail, 'error');
       setLoading(false);
       return;
     }

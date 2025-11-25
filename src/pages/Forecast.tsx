@@ -2,23 +2,16 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Sparkles, IndianRupee } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
-import apiFetch from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-interface Dataset {
-  id: string;
-  name: string;
-  created_at: string;
-}
-const COLORS = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+// const COLORS = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 export function Forecast() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [selectedDataset, setSelectedDataset] = useState('');
   const [forecastDays, setForecastDays] = useState<number>(30);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters, setShowFilters] = useState(false);
   const [forecastResult, setForecastResult] = useState<any>(null);
   const [filters, setFilters] = useState({
     city: '',
@@ -30,8 +23,30 @@ export function Forecast() {
   const [cities, setCities] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [productCategoryMap, setProductCategoryMap] = useState<{[key: string]: string}>({});
+  const [filteredProducts, setFilteredProducts] = useState<string[]>([]);
+  
   useEffect(() => {
     fetchFeatures();
+    const storedForecast = localStorage.getItem('lastForecastResult');
+    if (storedForecast) {
+      console.log(storedForecast)
+      try {
+        const parsedForecast = JSON.parse(storedForecast);
+        setForecastResult(parsedForecast);
+        setFilters({
+          city: parsedForecast.city || '',
+          product: parsedForecast.product || '',
+          category: parsedForecast.product_category || '',
+          price: parsedForecast.price ? parsedForecast.price.toString() : '',
+          discount: parsedForecast.discount ? parsedForecast.discount.toString() : '',
+        });
+        setShowResults(true);
+      } catch (e) {
+        console.error("Failed to parse stored forecast from localStorage", e);
+        localStorage.removeItem('lastForecastResult');
+      }
+    }
   }, []);
 
   const fetchFeatures = async () => {
@@ -51,59 +66,34 @@ export function Forecast() {
       const data = await response.json();
       
       setCities(Array.isArray(data.city) ? data.city : []);
-      setProducts(Array.isArray(data.product) ? data.product : []);
-      setCategories(Array.isArray(data.category) ? data.category : []);
+      if (typeof data.product === 'object' && data.product !== null) {
+        const productMap = data.product;
+        const allProducts = Object.keys(productMap);
+        const uniqueCategories = [...new Set(Object.values(productMap))] as string[];
+        
+        setProductCategoryMap(productMap);
+        setProducts(allProducts);
+        setFilteredProducts(allProducts);
+        setCategories(uniqueCategories);
+        setFilters((prev) => ({
+          ...prev,
+          category: uniqueCategories.length > 0 ? uniqueCategories[0] : '',
+          product: allProducts.length > 0 ? allProducts[0] : '',
+        }));
+      } else {
+        setProducts([]);
+        setFilteredProducts([]);
+        setCategories([]);
+      }
     } catch(e) {
       console.log(e);
     }
   }
-  // const fetchDatasets = async () => {
-    // try {
-    //   const { data, error } = await apiFetch("orrigin/datasets");
-    //   if (error) throw error;
-    //   setDatasets(data || []);
-    // } catch (error: any) {
-    //   showToast(error.message || 'Failed to fetch datasets', 'error');
-    // }
-  // };
-  // const generateMockForecast = () => {
-  //   const days = forecastDays;
-  //   const data = [];
-  //   const startDate = new Date();
-  //   for (let i = 0; i < days; i++) {
-  //     const date = new Date(startDate);
-  //     date.setDate(date.getDate() + i);
-  //     const baseValue = 1000 + Math.random() * 500;
-  //     const trend = i * 10;
-  //     const seasonal = Math.sin(i / 7) * 200;
-  //     data.push({
-  //       date: date.toISOString().split('T')[0],
-  //       predicted: Math.round(baseValue + trend + seasonal),
-  //       confidence_low: Math.round(baseValue + trend + seasonal - 150),
-  //       confidence_high: Math.round(baseValue + trend + seasonal + 150),
-  //       historical: i < days / 2 ? Math.round(baseValue + trend + seasonal + (Math.random() - 0.5) * 100) : null,
-  //     });
-  //   }
-  //   return data;
-  // };
-  // const generateCategoryData = () => {
-  //   return [
-  //     { name: 'Electronics', value: 35, growth: '+12%' },
-  //     { name: 'Clothing', value: 25, growth: '+8%' },
-  //     { name: 'Food', value: 20, growth: '+15%' },
-  //     { name: 'Home', value: 15, growth: '+5%' },
-  //     { name: 'Other', value: 5, growth: '+3%' },
-  //   ];
-  // };
-  // const generateCityData = () => {
-  //   return [
-  //     { city: 'Surat', sales: 12500, forecast: 14200 },
-  //     { city: 'Vadodara', sales: 10800, forecast: 12100 },
-  //     { city: 'Gandhinagar', sales: 9200, forecast: 10500 },
-  //     { city: 'Jamnagar', sales: 8500, forecast: 9800 },
-  //     { city: 'Ahemdabad', sales: 7300, forecast: 8600 },
-  //   ];
-  // };
+
+  const generateCacheKey = (payload: any) => {
+    return JSON.stringify(payload);
+  };
+
   const handleForecast = async () => {
     setLoading(true);
     setShowResults(false);
@@ -117,7 +107,24 @@ export function Forecast() {
         price: filters.price ? parseFloat(filters.price) : undefined,
         discount: filters.discount ? parseFloat(filters.discount) : undefined,
       };
-      console.log("payload: ", payload)
+
+      const cacheKey = generateCacheKey(payload);
+      const cachedResult = localStorage.getItem(cacheKey);
+
+      if (cachedResult) {
+        try {
+          const parsedResult = JSON.parse(cachedResult);
+          setForecastResult(parsedResult);
+          setShowResults(true);
+          showToast('Forecast loaded from cache!', 'info');
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error("Failed to parse cached forecast", e);
+          localStorage.removeItem(cacheKey); // Clear corrupted cache
+        }
+      }
+
       const response = await fetch('http://localhost:8000/train/predict',
         { 
           method: "POST", 
@@ -129,7 +136,7 @@ export function Forecast() {
         })
       
       const res = await response.json();
-      console.log(res);
+      // console.log(res);
       if (!response.ok) {
         showToast(res.detail || 'Failed to generate forecast', 'error');
         setLoading(false);
@@ -137,12 +144,25 @@ export function Forecast() {
       }
       
       setForecastResult(res);
-      showToast('Forecast generated successfully!', 'success');
       setShowResults(true);
+      localStorage.setItem(cacheKey, JSON.stringify(res));
+      localStorage.setItem('lastForecastResult', JSON.stringify(res));
+      showToast('Forecast generated successfully!', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to generate forecast', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+  const handleCategoryChange = (category: string) => {
+    setFilters({ ...filters, category: category, product: '' });
+    if (category === '') {
+      setFilteredProducts(products);
+    } else {
+      const newFilteredProducts = Object.keys(productCategoryMap).filter(
+        (product) => productCategoryMap[product] === category
+      );
+      setFilteredProducts(newFilteredProducts);
     }
   };
     const overviewStats = forecastResult ? [
@@ -241,16 +261,16 @@ export function Forecast() {
               </div>
             </div>
   
-            <div className="border-t border-white/5 pt-6 mb-6">
-              <button
+            <div className="mb-6">
+              {/* <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center gap-2 text-gray-200 hover:text-blue-400 transition-all"
                 aria-label={showFilters ? 'Hide filters' : 'Show filters'}
               >
                 <Filter className="w-4 h-4 animate-pulseConstellation" />
                 <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
-              </button>
-              {showFilters && (
+              </button> */}
+              {(
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-growIn">
                   <div>
                     <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
@@ -260,10 +280,11 @@ export function Forecast() {
                     <select
                       value={filters.city}
                       onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by city"
                     >
-                      <option value="">All Cities</option>
+                      {/* <option value="">All Cities</option> */}
                       {cities.map((city) => (
                         <option key={city} value={city}>
                           {city}
@@ -279,11 +300,12 @@ export function Forecast() {
                     </label>
                     <select
                       value={filters.category}
-                      onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                      onChange={(e) => handleCategoryChange(e.target.value)}
+                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by category"
                     >
-                      <option value="">All Categories</option>
+                      {/* <option value="">All Categories</option> */}
                       {categories.map((category) => (
                         <option key={category} value={category}>
                           {category}
@@ -300,11 +322,12 @@ export function Forecast() {
                     <select
                       value={filters.product}
                       onChange={(e) => setFilters({ ...filters, product: e.target.value })}
+                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by product"
                     >
-                      <option value="">All Products</option>
-                      {products.map((product) => (
+                      {/* <option value="">All Products</option> */}
+                      {filteredProducts.map((product) => (
                         <option key={product} value={product}>
                           {product}
                         </option>
@@ -312,10 +335,10 @@ export function Forecast() {
                     </select>
                   </div>
                   
-                  <div>
+                  {/* <div>
                     <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <IndianRupee className="w-4 h-4 animate-pulseConstellation" />
-                      Price Range
+                      Target Price
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -327,9 +350,9 @@ export function Forecast() {
                         aria-label="Price filter"
                       />
                     </div>
-                  </div>
+                  </div> */}
   
-                  <div>
+                  {/* <div>
                     <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
                       <Percent className="w-4 h-4 animate-pulseConstellation" />
                       Discount
@@ -344,7 +367,8 @@ export function Forecast() {
                         aria-label="Discount filter"
                       />
                     </div>
-                  </div>
+                  </div> */}
+                  
                 </div>
               )}
             </div>
