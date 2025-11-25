@@ -5,6 +5,7 @@ import type { Data, Layout } from 'plotly.js';
 import { Package, IndianRupee } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import apiFetch from '../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 type RawData = {
   kpis?: { total_sales?: number; total_revenue?: number };
@@ -22,6 +23,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
   const { showToast } = useToast();
   const [data, setData] = useState<RawData>({});
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   // hoveredCategory controls the right-hand detail pie
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
       setLoading(false);
       return;
     }
-    console.log(d)
+    // console.log(d)
     setData(d);
     setLoading(false);
   };
@@ -143,6 +145,16 @@ export function BusinessInsightsPlotly(): JSX.Element {
 
         {loading ? (
           <div className="text-center text-gray-400 text-lg">Loading insights...</div>
+        ) : Object.keys(data).length === 0 || (!data.kpis && !data.charts) ? (
+          <div className="text-center text-gray-400 text-lg mt-8">
+            <p className="mb-4">No business insights data available.</p>
+            <button
+              onClick={() => navigate('/upload')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg"
+            >
+              Upload Data
+            </button>
+          </div>
         ) : (
           <>
             {/* KPI cards (unchanged) */}

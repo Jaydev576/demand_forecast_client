@@ -3,17 +3,50 @@ import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Spa
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { Dialog } from '../components/Dialog';
+import { Card } from '../components/Card';
+import { ForecastDetails } from '../components/ForecastDetails'; // Import ForecastDetails
+
+// Define TypeScript Interfaces
+interface Prediction {
+  date: string;
+  predicted_quantity_sold: number;
+}
+
+interface ForecastData {
+  city: string;
+  product: string;
+  product_category: string;
+  predictions: Prediction[];
+  price?: number;
+  discount?: number;
+}
+
+interface FilterState {
+  city: string;
+  product: string;
+  category: string;
+  price: string;
+  discount: string;
+}
+
+interface ProductCategoryMap {
+  [key: string]: string;
+}
 
 // const COLORS = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 export function Forecast() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const { showToast } = useToast();
   const [forecastDays, setForecastDays] = useState<number>(30);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   // const [showFilters, setShowFilters] = useState(false);
-  const [forecastResult, setForecastResult] = useState<any>(null);
-  const [filters, setFilters] = useState({
+  const [forecastResult, setForecastResult] = useState<ForecastData | null>(null);
+  const [recentForecasts, setRecentForecasts] = useState<ForecastData[]>([]);
+  const [selectedForecast, setSelectedForecast] = useState<ForecastData | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
     city: '',
     product: '',
     category: '',
@@ -23,16 +56,21 @@ export function Forecast() {
   const [cities, setCities] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [productCategoryMap, setProductCategoryMap] = useState<{[key: string]: string}>({});
+  const [productCategoryMap, setProductCategoryMap] = useState<ProductCategoryMap>({});
   const [filteredProducts, setFilteredProducts] = useState<string[]>([]);
   
   useEffect(() => {
     fetchFeatures();
+    const storedRecentForecasts = localStorage.getItem('recentForecasts');
+    if (storedRecentForecasts) {
+      setRecentForecasts(JSON.parse(storedRecentForecasts));
+    }
+
     const storedForecast = localStorage.getItem('lastForecastResult');
     if (storedForecast) {
-      console.log(storedForecast)
+      // console.log(storedForecast)
       try {
-        const parsedForecast = JSON.parse(storedForecast);
+        const parsedForecast: ForecastData = JSON.parse(storedForecast);
         setForecastResult(parsedForecast);
         setFilters({
           city: parsedForecast.city || '',
@@ -67,7 +105,7 @@ export function Forecast() {
       
       setCities(Array.isArray(data.city) ? data.city : []);
       if (typeof data.product === 'object' && data.product !== null) {
-        const productMap = data.product;
+        const productMap: ProductCategoryMap = data.product;
         const allProducts = Object.keys(productMap);
         const uniqueCategories = [...new Set(Object.values(productMap))] as string[];
         
@@ -95,6 +133,11 @@ export function Forecast() {
   };
 
   const handleForecast = async () => {
+    if (!filters.city || !filters.product || !filters.category) {
+      showToast('Please select a City, Category, and Product to generate a forecast.', 'error');
+      return;
+    }
+
     setLoading(true);
     setShowResults(false);
     setForecastResult(null);
@@ -104,8 +147,8 @@ export function Forecast() {
         product: filters.product,
         city: filters.city,
         num_days: forecastDays,
-        price: filters.price ? parseFloat(filters.price) : undefined,
-        discount: filters.discount ? parseFloat(filters.discount) : undefined,
+        // price: filters.price ? parseFloat(filters.price) : undefined,
+        // discount: filters.discount ? parseFloat(filters.discount) : undefined,
       };
 
       const cacheKey = generateCacheKey(payload);
@@ -113,7 +156,7 @@ export function Forecast() {
 
       if (cachedResult) {
         try {
-          const parsedResult = JSON.parse(cachedResult);
+          const parsedResult: ForecastData = JSON.parse(cachedResult);
           setForecastResult(parsedResult);
           setShowResults(true);
           showToast('Forecast loaded from cache!', 'info');
@@ -138,15 +181,27 @@ export function Forecast() {
       const res = await response.json();
       // console.log(res);
       if (!response.ok) {
-        showToast(res.detail || 'Failed to generate forecast', 'error');
+        // Handle FastAPI validation errors, which come in a 'detail' array
+        let errorMessage = 'Failed to generate forecast';
+        if (res.detail && Array.isArray(res.detail)) {
+          errorMessage = res.detail.map((err: any) => err.msg).join(', ');
+        } else if (res.detail) {
+          errorMessage = res.detail;
+        }
+        // showToast(errorMessage, 'error');
         setLoading(false);
         return;
       }
-      
+      // console.log(res)
       setForecastResult(res);
       setShowResults(true);
       localStorage.setItem(cacheKey, JSON.stringify(res));
       localStorage.setItem('lastForecastResult', JSON.stringify(res));
+
+      const updatedRecentForecasts = [res, ...recentForecasts.slice(0, 5)];
+      setRecentForecasts(updatedRecentForecasts);
+      localStorage.setItem('recentForecasts', JSON.stringify(updatedRecentForecasts));
+
       showToast('Forecast generated successfully!', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to generate forecast', 'error');
@@ -165,13 +220,18 @@ export function Forecast() {
       setFilteredProducts(newFilteredProducts);
     }
   };
-    const overviewStats = forecastResult ? [
-      { label: 'Projected Total Sales', value: forecastResult.predictions.reduce((acc: number, p: any) => acc + p.predicted_quantity_sold, 0), change: '', color: 'from-blue-500 to-cyan-500' },
-      { label: 'Average Daily Sales', value: (forecastResult.predictions.reduce((acc: number, p: any) => acc + p.predicted_quantity_sold, 0) / forecastResult.predictions.length).toFixed(2), change: '', color: 'from-cyan-500 to-teal-500' },
-      { label: 'Forecast Confidence', value: 'N/A', change: '', color: 'from-teal-500 to-emerald-500' },
-    ] : [];
-  
-    const chartData = forecastResult ? forecastResult.predictions.map((p: any) => ({ date: p.date.split('T')[0], predicted: p.predicted_quantity_sold })) : [];
+
+  const handleViewForecast = (forecast: ForecastData) => {
+    setSelectedForecast(forecast);
+    setIsDialogOpen(true);
+  };
+
+  const overviewStats = (result: any) => result ? [
+    { label: 'Projected Total Sales', value: result.predictions.reduce((acc: number, p: any) => acc + p.predicted_quantity_sold, 0), change: '', color: 'from-blue-500 to-cyan-500' },
+    { label: 'Average Daily Sales', value: (result.predictions.reduce((acc: number, p: any) => acc + p.predicted_quantity_sold, 0) / result.predictions.length).toFixed(2), change: '', color: 'from-cyan-500 to-teal-500' },
+  ] : [];
+
+  const chartData = (result: any) => result ? result.predictions.map((p: any) => ({ date: p.date.split('T')[0], predicted: p.predicted_quantity_sold })) : [];
   
   
     return (
@@ -280,11 +340,10 @@ export function Forecast() {
                     <select
                       value={filters.city}
                       onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by city"
                     >
-                      {/* <option value="">All Cities</option> */}
+                      <option value="">All Cities</option>
                       {cities.map((city) => (
                         <option key={city} value={city}>
                           {city}
@@ -301,11 +360,10 @@ export function Forecast() {
                     <select
                       value={filters.category}
                       onChange={(e) => handleCategoryChange(e.target.value)}
-                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by category"
                     >
-                      {/* <option value="">All Categories</option> */}
+                      <option value="">All Categories</option> 
                       {categories.map((category) => (
                         <option key={category} value={category}>
                           {category}
@@ -322,11 +380,10 @@ export function Forecast() {
                     <select
                       value={filters.product}
                       onChange={(e) => setFilters({ ...filters, product: e.target.value })}
-                      required
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by product"
                     >
-                      {/* <option value="">All Products</option> */}
+                      <option value="">All Products</option>
                       {filteredProducts.map((product) => (
                         <option key={product} value={product}>
                           {product}
@@ -399,8 +456,8 @@ export function Forecast() {
           {showResults && forecastResult && (
             <div className="space-y-12">
               {/* Results: Overview Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                {overviewStats.map((stat, index) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                {overviewStats(forecastResult).map((stat, index) => (
                   <div key={index} className="relative group animate-growIn" style={{ animationDelay: `${index * 0.2}s` }}>
                     <div className={`absolute inset-0 bg-gradient-to-r ${stat.color} opacity-10 rounded-2xl blur-xl animate-chartPulse`}></div>
                     <div className="relative bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6 transition-all">
@@ -421,7 +478,7 @@ export function Forecast() {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 animate-chartPulse pointer-events-none"></div>
                 <h3 className="text-xl font-semibold text-white mb-6">Sales Forecast Trend for {forecastResult.product} in {forecastResult.city}</h3>
                 <ResponsiveContainer width="100%" height={400}>
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData(forecastResult)}>
                     <defs>
                       <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -477,7 +534,106 @@ export function Forecast() {
               </div>
             </div>
           )}
+          {recentForecasts.length > 0 && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-white mb-6">Recent Forecasts</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recentForecasts.map((forecast, index) => (
+                  <Card
+                    key={index}
+                    title={`${forecast.product} in ${forecast.city}`}
+                    description={`Forecast for ${forecast.predictions.length} days`}
+                    onView={() => handleViewForecast(forecast)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+
+        <Dialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
+        {selectedForecast && (
+          <div className="space-y-12">
+            {/* Results: Overview Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+              {overviewStats(selectedForecast).map((stat, index) => (
+                <div key={index} className="relative group animate-growIn" style={{ animationDelay: `${index * 0.2}s` }}>
+                  <div className={`absolute inset-0 bg-gradient-to-r ${stat.color} opacity-10 rounded-2xl blur-xl animate-chartPulse`}></div>
+                  <div className="relative bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6 transition-all">
+                    <div className="text-gray-200 text-sm mb-2">{stat.label}</div>
+                    <div className="flex items-end justify-between">
+                      <div className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                        {stat.value}
+                      </div>
+                      <div className="text-emerald-400 text-sm font-medium">{stat.change}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Results: Demand Forecast Chart */}
+            <div className="bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden animate-growIn">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 animate-chartPulse pointer-events-none"></div>
+              <h3 className="text-xl font-semibold text-white mb-6">Sales Forecast Trend for {selectedForecast.product} in {selectedForecast.city}</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart data={chartData(selectedForecast)}>
+                  <defs>
+                    <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="date" stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
+                  <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      color: '#fff',
+                    }}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="predicted"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#colorPredicted)"
+                    name="Predicted Sales"
+                    className="animate-growIn"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Results: Predictions Table */}
+            <div className="bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden animate-growIn">
+                <h3 className="text-xl font-semibold text-white mb-6">Predictions</h3>
+                <div className="overflow-auto max-h-96">
+                    <table className="w-full text-sm text-left text-gray-400">
+                        <thead className="text-xs text-gray-300 uppercase bg-gray-800/50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">Date</th>
+                                <th scope="col" className="px-6 py-3">Predicted Quantity Sold</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {selectedForecast.predictions.map((p: any, index: number) => (
+                                <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-800/50">
+                                    <td className="px-6 py-4">{p.date.split('T')[0]}</td>
+                                    <td className="px-6 py-4">{p.predicted_quantity_sold}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          </div>
+        )}
+      </Dialog>
   
         <style>{`
           @keyframes pulseConstellation {

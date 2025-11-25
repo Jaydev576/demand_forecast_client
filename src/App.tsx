@@ -8,7 +8,6 @@ import { Footer } from './components/Footer';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
-import { Dashboard } from './pages/Dashboard';
 import { Upload } from './pages/Upload';
 import { Forecast } from './pages/Forecast';
 import { BusinessInsightsPlotly } from './pages/BusinessInsights';
@@ -37,14 +36,6 @@ function App() {
                     <RedirectIfAuthenticated>
                       <Signup />
                     </RedirectIfAuthenticated>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
                   }
                 />
                 <Route

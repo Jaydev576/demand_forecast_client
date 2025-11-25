@@ -104,12 +104,6 @@ export function Home() {
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
                   </span>
                 </Link>
-                <Link
-                  to="#features"
-                  className="px-8 py-4 rounded-xl font-semibold text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all hover:scale-105 animate-fadeInScale duration-1000 delay-200"
-                >
-                  Explore Features
-                </Link>
               </div>
             </div>
 
@@ -212,10 +206,10 @@ export function Home() {
               Join top-tier companies leveraging ForecastIQ to predict demand and dominate their markets
             </p>
             <Link
-              to={'/signup'}
+              to={'/upload'}
               className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 transition-all hover:scale-110 shadow-lg shadow-blue-500/25 animate-fadeInScale animate-pulseGlow duration-1000"
             >
-              Start Your Free Trial
+              Explore Now
               <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
             </Link>
           </div>

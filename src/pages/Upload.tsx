@@ -22,8 +22,8 @@ export function Upload() {
   // { field: 'holiday', type: 'String', required: true, example: 'Diwali' },
   { field: 'price', type: 'Number', required: true, example: '79999' },
   { field: 'discount', type: 'Number', required: false, example: '5000' },
-  // { field: 'final_price', type: 'Number', required: false, example: '74999' },
-  { field: 'competitor_price', type: 'Number', required: false, example: '77000' },
+  { field: 'final_price', type: 'Number', required: false, example: '74999' },
+  // { field: 'competitor_price', type: 'Number', required: false, example: '77000' },
   { field: 'marketing_spend', type: 'Number', required: false, example: '150000' },
   { field: 'last_month_sales', type: 'Number', required: true, example: '1200' },
   { field: 'quantity_sold', type: 'Number', required: true, example: '200' },
@@ -31,12 +31,9 @@ export function Upload() {
 
 
   const requirements = [
-    'Upload only CSV files',
     'File size limit: 100MB',
-    'Minimum  5 years of sales data',
     'Use DD-MM-YYYY for dates',
-    'Include all required fields',
-    'Ensure no missing values in required fields',
+    'Include all fields given in sample data',
   ];
 
   const handleDrag = (e: React.DragEvent) => {
@@ -77,9 +74,76 @@ export function Upload() {
       return;
     }
 
-    setFile(selectedFile);
-    showToast('File selected for demand forecasting', 'success');
+    validateCSV(selectedFile, (isValid) => {
+        if (isValid) {
+            setFile(selectedFile);
+            showToast('File selected for demand forecasting', 'success');
+        }
+    });
   };
+
+  const validateCSV = (file: File, callback: (isValid: boolean) => void) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').map(line => line.trim());
+      const headerLine = lines[0];
+      const headers = headerLine.split(',').map(h => h.trim());
+
+      const requiredHeaders = sampleData.map((item) => item.field);
+      const missingHeaders = requiredHeaders.filter(
+        (h) => !headers.includes(h)
+      );
+
+      if (missingHeaders.length > 0) {
+        showToast(
+          `Missing required columns: ${missingHeaders.join(', ')}`,
+          'error'
+        );
+        callback(false);
+        return;
+      }
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line === '') continue;
+        const values = line.split(',');
+        const row = headers.reduce((obj, header, index) => {
+          obj[header] = values[index];
+          return obj;
+        }, {} as Record<string, string>);
+
+
+        for (const item of sampleData) {
+          const value = row[item.field];
+          if (item.type === 'Number' && value && isNaN(Number(value))) {
+            showToast(
+              `Invalid number in column ${item.field} at row ${i + 1}`,
+              'error'
+            );
+            callback(false);
+            return;
+          }
+          if (item.type === 'Date' && value && isNaN(Date.parse(value))) {
+            showToast(
+              `Invalid date in column ${item.field} at row ${i + 1}`,
+              'error'
+            );
+            callback(false);
+            return;
+          }
+        }
+      }
+
+      callback(true);
+    };
+    reader.onerror = () => {
+      showToast('Error reading file', 'error');
+      callback(false);
+    };
+    reader.readAsText(file);
+  };
+  
   
   const handleUpload = async () => {
     if (!file) return;
@@ -164,65 +228,16 @@ export function Upload() {
     });
   }
 
-  // const handleUpload = async () => {
-  //   if (!file) {
-  //     showToast('Please select a file to analyze', 'warning');
-  //     return;
-  //   }
-
-  //   setUploading(true);
-  //   setUploadProgress(0);
-
-  //   // Simulate progress for realism
-  //   const progressInterval = setInterval(() => {
-  //     setUploadProgress((prev) => {
-  //       if (prev >= 90) {
-  //         clearInterval(progressInterval);
-  //         return prev;
-  //       }
-  //       return prev + 10;
-  //     });
-  //   }, 300);
-
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append('file', file);
-  //     formData.append('user_id', user?.id || '');
-
-  //     const response = await fetch('http://127.0.0.1:8000/upload', {
-  //       method: 'POST',
-  //       body: formData,
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error('Upload failed. Please retry.');
-  //     }
-
-  //     const data = await response.json();
-  //     setUploadProgress(100);
-  //     showToast('Dataset uploaded successfully!', 'success');
-  //     setFile(null);
-  //     if (fileInputRef.current) fileInputRef.current.value = '';
-  //   } catch (error: any) {
-  //     showToast(error.message || 'Upload failed. Please retry.', 'error');
-  //   } finally {
-  //     clearInterval(progressInterval);
-  //     setUploading(false);
-  //   }
-  // };
-
  const downloadSample = () => {
-  const csv = `date,product_category,product,city,release_date,season,holiday,price,discount,final_price,competitor_price,marketing_spend,last_month_sales,quantity_sold
-2025-01-01,Mobile,Mobile_1,Ahmedabad,2020-05-14,Winter,New Year,58999,0.15,50149,51499,650000,1200000,185
-2025-01-02,Laptop,Laptop_2,Surat,2019-07-20,Winter,,74999,0.10,67499,68999,420000,800000,24
-2025-01-03,Tablet,Tablet_3,Vadodara,2021-02-05,Winter,,29999,0.05,28499,28999,155000,380000,42
-2025-01-04,Headphone,Headphone_1,Rajkot,2018-11-22,Winter,Makar Sankranti,4999,0.20,3999,4199,95000,150000,280
-2025-01-05,Smartwatch,Smartwatch_2,Bhavnagar,2022-03-10,Winter,,15999,0.10,14399,14999,110000,220000,65
-2025-01-06,Mobile,Mobile_3,Gandhinagar,2020-12-01,Winter,,65999,0.05,62699,63999,580000,1150000,162
-2025-01-07,Laptop,Laptop_4,Anand,2019-06-17,Winter,Republic Day,89999,0.20,71999,73999,460000,850000,28
-2025-01-08,Headphone,Headphone_3,Junagadh,2020-08-09,Winter,,2999,0.05,2849,2899,87000,160000,250
-2025-01-09,Smartwatch,Smartwatch_1,Jamnagar,2021-10-12,Winter,,13999,0.10,12599,12999,95000,200000,70
-2025-01-10,Tablet,Tablet_2,Morbi,2021-03-01,Winter,,25999,0.15,22099,22999,175000,360000,48`;
+  const csv = `date,product_category,product,city,release_date,price,discount,final_price,marketing_spend,last_month_sales,quantity_sold
+    2020-01-01,Mobile,Mobile_1,Ahmedabad,2016-09-09 00:45:26,87899,0.1,79100,1198200,152261164.17,94
+    2020-01-01,Mobile,Mobile_1,Surat,2016-09-09 00:45:26,83499,0.15,70999,1198200,152261164.17,134
+    2020-01-01,Mobile,Mobile_1,Vadodara,2016-09-09 00:45:26,87899,0.15,74699,1198200,152261164.17,123
+    2020-01-01,Mobile,Mobile_1,Rajkot,2016-09-09 00:45:26,92300,0.2,73800,1198200,152261164.17,94
+    2020-01-01,Mobile,Mobile_1,Bhavnagar,2016-09-09 00:45:26,83499,0.1,75099,1198200,152261164.17,146
+    2020-01-01,Mobile,Mobile_1,Jamnagar,2016-09-09 00:45:26,92300,0.15,78500,1198200,152261164.17,25
+    2020-01-01,Mobile,Mobile_1,Junagadh,2016-09-09 00:45:26,87900,0.0,87900,1198200,152261164.17,104
+    2020-01-01,Mobile,Mobile_1,Gandhinagar,2016-09-09 00:45:26,92300,0.15,78499,1198200,152261164.17,83`;
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -387,7 +402,6 @@ export function Upload() {
                 <tr className="border-b border-white/5">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Field</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Type</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Required</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Example</th>
                 </tr>
               </thead>
@@ -396,17 +410,6 @@ export function Upload() {
                   <tr key={index} className="border-b border-white/5">
                     <td className="py-3 px-4 text-white font-medium">{field.field}</td>
                     <td className="py-3 px-4 text-gray-400">{field.type}</td>
-                    <td className="py-3 px-4">
-                      {field.required ? (
-                        <span className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          Required
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-lg text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
-                          Optional
-                        </span>
-                      )}
-                    </td>
                     <td className="py-3 px-4 text-gray-500 font-mono text-sm">{field.example}</td>
                   </tr>
                 ))}
@@ -414,15 +417,6 @@ export function Upload() {
             </table>
           </div>
         </div>
-
-        {/* 5. Privacy Notice Section
-        <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-8">
-          <AlertCircle className="w-8 h-8 text-blue-400 mb-3 animate-pulseNode" />
-          <h3 className="text-lg font-semibold text-white mb-2">Your Data is Safe</h3>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            We use GDPR-compliant encryption to protect your data. It’s stored securely and never shared with third parties.
-          </p>
-        </div> */}
       </div>
 
       <style>{`
