@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Sparkles, IndianRupee } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../contexts/AuthContext';
 import { Dialog } from '../components/Dialog';
 import { Card } from '../components/Card';
-import { ForecastDetails } from '../components/ForecastDetails'; // Import ForecastDetails
 
 // Define TypeScript Interfaces
 interface Prediction {
@@ -26,8 +24,6 @@ interface FilterState {
   city: string;
   product: string;
   category: string;
-  price: string;
-  discount: string;
 }
 
 interface ProductCategoryMap {
@@ -36,12 +32,10 @@ interface ProductCategoryMap {
 
 // const COLORS = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 export function Forecast() {
-  // const { user } = useAuth();
   const { showToast } = useToast();
   const [forecastDays, setForecastDays] = useState<number>(30);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  // const [showFilters, setShowFilters] = useState(false);
   const [forecastResult, setForecastResult] = useState<ForecastData | null>(null);
   const [recentForecasts, setRecentForecasts] = useState<ForecastData[]>([]);
   const [selectedForecast, setSelectedForecast] = useState<ForecastData | null>(null);
@@ -50,8 +44,6 @@ export function Forecast() {
     city: '',
     product: '',
     category: '',
-    price: '',
-    discount: '',
   });
   const [cities, setCities] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
@@ -61,14 +53,9 @@ export function Forecast() {
   
   useEffect(() => {
     fetchFeatures();
-    const storedRecentForecasts = localStorage.getItem('recentForecasts');
-    if (storedRecentForecasts) {
-      setRecentForecasts(JSON.parse(storedRecentForecasts));
-    }
-
+    fetchForecastHistory();
     const storedForecast = localStorage.getItem('lastForecastResult');
     if (storedForecast) {
-      // console.log(storedForecast)
       try {
         const parsedForecast: ForecastData = JSON.parse(storedForecast);
         setForecastResult(parsedForecast);
@@ -76,8 +63,6 @@ export function Forecast() {
           city: parsedForecast.city || '',
           product: parsedForecast.product || '',
           category: parsedForecast.product_category || '',
-          price: parsedForecast.price ? parsedForecast.price.toString() : '',
-          discount: parsedForecast.discount ? parsedForecast.discount.toString() : '',
         });
         setShowResults(true);
       } catch (e) {
@@ -87,9 +72,27 @@ export function Forecast() {
     }
   }, []);
 
+  const fetchForecastHistory = async () => {
+    try {
+      const response = await fetch('/api/forecast/get_forecasts', {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecentForecasts(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch forecast history", e);
+    }
+  }
+
   const fetchFeatures = async () => {
     try {
-      const response = await fetch('http://localhost:8000/feature/features', {
+      const response = await fetch('/api/feature/features', {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
@@ -102,7 +105,6 @@ export function Forecast() {
       }
 
       const data = await response.json();
-      
       setCities(Array.isArray(data.city) ? data.city : []);
       if (typeof data.product === 'object' && data.product !== null) {
         const productMap: ProductCategoryMap = data.product;
@@ -115,8 +117,8 @@ export function Forecast() {
         setCategories(uniqueCategories);
         setFilters((prev) => ({
           ...prev,
-          category: uniqueCategories.length > 0 ? uniqueCategories[0] : '',
-          product: allProducts.length > 0 ? allProducts[0] : '',
+          category: '',
+          product: '',
         }));
       } else {
         setProducts([]);
@@ -128,12 +130,8 @@ export function Forecast() {
     }
   }
 
-  const generateCacheKey = (payload: any) => {
-    return JSON.stringify(payload);
-  };
-
   const handleForecast = async () => {
-    if (!filters.city || !filters.product || !filters.category) {
+    if (filters.city === '' || filters.product ===  '' || filters.category === '') {
       showToast('Please select a City, Category, and Product to generate a forecast.', 'error');
       return;
     }
@@ -147,28 +145,9 @@ export function Forecast() {
         product: filters.product,
         city: filters.city,
         num_days: forecastDays,
-        // price: filters.price ? parseFloat(filters.price) : undefined,
-        // discount: filters.discount ? parseFloat(filters.discount) : undefined,
       };
 
-      const cacheKey = generateCacheKey(payload);
-      const cachedResult = localStorage.getItem(cacheKey);
-
-      if (cachedResult) {
-        try {
-          const parsedResult: ForecastData = JSON.parse(cachedResult);
-          setForecastResult(parsedResult);
-          setShowResults(true);
-          showToast('Forecast loaded from cache!', 'info');
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error("Failed to parse cached forecast", e);
-          localStorage.removeItem(cacheKey); // Clear corrupted cache
-        }
-      }
-
-      const response = await fetch('http://localhost:8000/train/predict',
+      const response = await fetch('/api/predict/',
         { 
           method: "POST", 
           headers: {
@@ -188,14 +167,13 @@ export function Forecast() {
         } else if (res.detail) {
           errorMessage = res.detail;
         }
-        // showToast(errorMessage, 'error');
+        showToast(errorMessage, 'error');
         setLoading(false);
         return;
       }
       // console.log(res)
       setForecastResult(res);
       setShowResults(true);
-      localStorage.setItem(cacheKey, JSON.stringify(res));
       localStorage.setItem('lastForecastResult', JSON.stringify(res));
 
       const updatedRecentForecasts = [res, ...recentForecasts.slice(0, 5)];
@@ -209,6 +187,7 @@ export function Forecast() {
       setLoading(false);
     }
   };
+  
   const handleCategoryChange = (category: string) => {
     setFilters({ ...filters, category: category, product: '' });
     if (category === '') {
@@ -232,7 +211,6 @@ export function Forecast() {
   ] : [];
 
   const chartData = (result: any) => result ? result.predictions.map((p: any) => ({ date: p.date.split('T')[0], predicted: p.predicted_quantity_sold })) : [];
-  
   
     return (
       <div className="min-h-screen bg-gray-950 overflow-hidden relative">
@@ -322,14 +300,6 @@ export function Forecast() {
             </div>
   
             <div className="mb-6">
-              {/* <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 text-gray-200 hover:text-blue-400 transition-all"
-                aria-label={showFilters ? 'Hide filters' : 'Show filters'}
-              >
-                <Filter className="w-4 h-4 animate-pulseConstellation" />
-                <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
-              </button> */}
               {(
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-growIn">
                   <div>
@@ -343,7 +313,7 @@ export function Forecast() {
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by city"
                     >
-                      <option value="">All Cities</option>
+                      <option value="">Select a City</option>
                       {cities.map((city) => (
                         <option key={city} value={city}>
                           {city}
@@ -363,7 +333,7 @@ export function Forecast() {
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by category"
                     >
-                      <option value="">All Categories</option> 
+                      <option value="">Select a Category</option> 
                       {categories.map((category) => (
                         <option key={category} value={category}>
                           {category}
@@ -383,7 +353,7 @@ export function Forecast() {
                       className="w-full px-4 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       aria-label="Filter by product"
                     >
-                      <option value="">All Products</option>
+                      <option value="">Select a Product</option>
                       {filteredProducts.map((product) => (
                         <option key={product} value={product}>
                           {product}

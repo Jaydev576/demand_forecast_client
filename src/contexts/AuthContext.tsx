@@ -21,17 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getUser()
-    // Fetch user session from backend
-    // fetch('http://127.0.0.1:8000/auth/me', {
-    //   credentials: 'include',
-    // })
-    //   .then((res) => res.json())
-    //   .then((data) => {
-    //     setUser(data.user || null);
-    //     setLoading(false);
-    //   })
-    //   .catch(() => setLoading(false));
+    getUser();
   }, []);
 
   const getUser = async () => {
@@ -40,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-     const res = await fetch('http://127.0.0.1:8000/auth/me', {
+     const res = await fetch('/api/auth/me', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
@@ -59,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, companyName?: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/signup', {
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => { 
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('lastForecastResult');
+    localStorage.removeItem('recentForecasts');
     setUser(null);
   };
 

@@ -154,7 +154,7 @@ export function Upload() {
     formData.append("file", file);
     try {
       // Request the pre-signed URL from your FastAPI backend
-      const res = await fetch(`http://localhost:8000/upload/generate-upload-url?filename=${encodeURIComponent(file.name)}&content_type=${file.type}`, {
+      const res = await fetch(`/api/upload/generate-upload-url?filename=${encodeURIComponent(file.name)}&content_type=${file.type}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
@@ -175,7 +175,7 @@ export function Upload() {
       setFile(null);
 
       // Notify backend
-      const notifyResponse = await fetch("http://localhost:8000/upload/upload-complete", {
+      const notifyResponse = await fetch("/api/upload/upload-complete", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
