@@ -11,6 +11,7 @@ import { Signup } from './pages/Signup';
 import { Upload } from './pages/Upload';
 import { Forecast } from './pages/Forecast';
 import { BusinessInsightsPlotly } from './pages/BusinessInsights';
+import { NotFound } from './pages/NotFound';
 
 function App() {
   return (
@@ -62,7 +63,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer />

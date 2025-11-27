@@ -1,4 +1,3 @@
-// BusinessInsightsPlotlyPies.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Data, Layout } from 'plotly.js';
@@ -30,23 +29,23 @@ export function BusinessInsightsPlotly(): JSX.Element {
   // optionally store the last hovered label/value for nicer title
   const [hoveredValue, setHoveredValue] = useState<number | null>(null);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: d, error } = await apiFetch('insights');
-    // console.log(d, error)
+    const { data: d, error } = await apiFetch('insights/');
     if (error) {
-      showToast('Error fetching insights data: ' + error.detail, 'error');
+      showToast(error.detail || 'Error fetching insights data', 'info');
       setLoading(false);
       return;
     }
-    // console.log(d)
     setData(d);
     setLoading(false);
   };
 
-  // Theme / shared layout
+  // Theme/shared layout
   const paperBg = '#0d1117';  // outer bg
   const plotBg = '#0f1724';   // plot bg
   const axisColor = '#9ca3af';
@@ -131,13 +130,66 @@ export function BusinessInsightsPlotly(): JSX.Element {
     setHoveredValue(null);
   };
 
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: '#050616' }}>
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
+  const formatKPI = (val: number | undefined | null) => {
+    if (val === undefined || val === null) return '0';
+    if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
+    if (val >= 1_000) return (val / 1_000).toFixed(1) + 'k';
+    return val.toLocaleString();
+  };
 
+  return (
+    <div className="min-h-screen bg-gray-950 overflow-hidden relative">
+      {/* Background Animation: Data Constellation */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-cyan-500/5 to-teal-500/10 pointer-events-none"></div>
+      <svg className="absolute inset-0 w-full h-full opacity-15 pointer-events-none">
+        {/* Nodes */}
+        <circle cx="10%" cy="20%" r="6" fill="#3B82F6" className="animate-pulseConstellation" style={{ animationDelay: '0s' }} />
+        <circle cx="80%" cy="30%" r="5" fill="#06B6D4" className="animate-pulseConstellation" style={{ animationDelay: '0.5s' }} />
+        <circle cx="50%" cy="60%" r="7" fill="#14B8A6" className="animate-pulseConstellation" style={{ animationDelay: '1s' }} />
+        <circle cx="20%" cy="70%" r="5" fill="#3B82F6" className="animate-pulseConstellation" style={{ animationDelay: '1.5s' }} />
+        <circle cx="70%" cy="10%" r="6" fill="#06B6D4" className="animate-pulseConstellation" style={{ animationDelay: '2s' }} />
+        {/* Connections */}
+        <path
+          d="M10% 20% L80% 30%"
+          fill="none"
+          stroke="#3B82F6"
+          strokeWidth="1"
+          strokeOpacity="0.3"
+          className="animate-connectConstellation"
+          style={{ animationDelay: '0.2s' }}
+        />
+        <path
+          d="M50% 60% L20% 70%"
+          fill="none"
+          stroke="#06B6D4"
+          strokeWidth="1"
+          strokeOpacity="0.3"
+          className="animate-connectConstellation"
+          style={{ animationDelay: '0.7s' }}
+        />
+        <path
+          d="M80% 30% L70% 10%"
+          fill="none"
+          stroke="#14B8A6"
+          strokeWidth="1"
+          strokeOpacity="0.3"
+          className="animate-connectConstellation"
+          style={{ animationDelay: '1.2s' }}
+        />
+        {/* Glow Effects */}
+        <circle cx="10%" cy="20%" r="10" fill="url(#glowGradient)" className="animate-glowEffect" />
+        <circle cx="80%" cy="30%" r="8" fill="url(#glowGradient)" className="animate-glowEffect" style={{ animationDelay: '0.5s' }} />
+        <circle cx="50%" cy="60%" r="9" fill="url(#glowGradient)" className="animate-glowEffect" style={{ animationDelay: '1s' }} />
+        <defs>
+          <radialGradient id="glowGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" style={{ stopColor: '#3B82F6', stopOpacity: 0.2 }} />
+            <stop offset="100%" style={{ stopColor: '#3B82F6', stopOpacity: 0 }} />
+          </radialGradient>
+        </defs>
+      </svg>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="flex items-center justify-center mb-8">
+          <div className="text-center">
             <h1 className="text-4xl font-bold text-white mb-2">Business Insights</h1>
             <p className="text-gray-400">Comprehensive analytics and actionable insights</p>
           </div>
@@ -146,11 +198,12 @@ export function BusinessInsightsPlotly(): JSX.Element {
         {loading ? (
           <div className="text-center text-gray-400 text-lg">Loading insights...</div>
         ) : Object.keys(data).length === 0 || (!data.kpis && !data.charts) ? (
-          <div className="text-center text-gray-400 text-lg mt-8">
-            <p className="mb-4">No business insights data available.</p>
+          <div className="text-center text-gray-400 text-lg mt-12">
+            <p className="mb-4 text-md">No business insights data available.</p>
             <button
               onClick={() => navigate('/upload')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg"
+              className="w-full mt-6 py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
+              // className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg"
             >
               Upload Data
             </button>
@@ -173,8 +226,11 @@ export function BusinessInsightsPlotly(): JSX.Element {
                             <stat.icon className="w-6 h-6 text-white" />
                           </div>
                         </div>
-                        <div className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-1`}>
-                          {stat.label === 'Total Revenue' ? `₹${stat.value?.toLocaleString()}` : stat.value?.toLocaleString()}
+                        <div 
+                          className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-1`}
+                          title={stat.value?.toLocaleString()}
+                        >
+                          {stat.label === 'Total Revenue' ? `₹${formatKPI(stat.value)}` : formatKPI(stat.value)}
                         </div>
                         <div className="text-gray-400 text-sm">{stat.label}</div>
                       </div>
@@ -329,6 +385,50 @@ export function BusinessInsightsPlotly(): JSX.Element {
           </>
         )}
       </div>
+      <style>{`
+          @keyframes pulseConstellation {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.4); opacity: 1; }
+          }
+          @keyframes connectConstellation {
+            0%, 100% { strokeOpacity: 0.2; }
+            50% { strokeOpacity: 0.5; }
+          }
+          @keyframes glowEffect {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.5; }
+          }
+          @keyframes chartPulse {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.2; }
+          }
+          @keyframes processWave {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          @keyframes growIn {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          .animate-pulseConstellation {
+            animation: pulseConstellation 4s ease-in-out infinite;
+          }
+          .animate-connectConstellation {
+            animation: connectConstellation 5s ease-in-out infinite;
+          }
+          .animate-glowEffect {
+            animation: glowEffect 3s ease-in-out infinite;
+          }
+          .animate-chartPulse {
+            animation: chartPulse 4s ease-in-out infinite;
+          }
+          .animate-processWave {
+            animation: processWave 2s linear infinite;
+          }
+          .animate-growIn {
+            animation: growIn 0.8s ease-out forwards;
+          }
+        `}</style>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { TrendingUp, Mail, Github, Linkedin, Twitter } from 'lucide-react';
 export function Footer() {
   return (
     <footer className="border-t border-white/5 bg-gray-950/80 backdrop-blur-2xl mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-4 md:grid-cols-4 gap-8">
           <div className="col-span-4 md:col-span-2">
             <Link to="/" className="flex items-center gap-2 group mb-4">
