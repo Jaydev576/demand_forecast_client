@@ -92,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => { 
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('lastForecastResult');
     localStorage.removeItem('recentForecasts');
     setUser(null);
   };

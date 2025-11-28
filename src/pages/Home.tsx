@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { TrendingUp, BarChart3, Brain, Zap, Shield, Globe, ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
-import myImage from '../assets/image.jpg';
+import myImage from '../../public/image.jpg';
 
 export function Home() {
   const features = [
@@ -54,7 +54,7 @@ export function Home() {
       {/* Background SVG Line Graph */}
       <svg className="absolute inset-0 w-full h-full opacity-10 pointer-events-none" preserveAspectRatio="none">
         <path
-          d="M0 600 C200 500, 400 700, 600 400 S800 300, 1000 500, 1200 200"
+          d="M0 600 C200 500, 400 700, 600 400 S800 300, 1000 500, 1200 200, 1400 400, 1600 300, 1800 600"
           fill="none"
           stroke="url(#graphGradient)"
           strokeWidth="2"

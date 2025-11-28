@@ -24,8 +24,8 @@ export function BusinessInsightsPlotly(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // hoveredCategory controls the right-hand detail pie
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // optionally store the last hovered label/value for nicer title
   const [hoveredValue, setHoveredValue] = useState<number | null>(null);
 
@@ -78,16 +78,17 @@ export function BusinessInsightsPlotly(): JSX.Element {
 
   // Prepare detail pie for selected category (variants/products)
   const detailForCategory = useMemo(() => {
-    if (!hoveredCategory) return null;
-    const variantsRecord = categoryContribution[hoveredCategory] ?? {};
+    const category = selectedCategory || hoveredCategory;
+    if (!category) return null;
+    const variantsRecord = categoryContribution[category] ?? {};
     const entries = Object.entries(variantsRecord);
     if (entries.length === 0) return null;
     const labels = entries.map(([k]) => k);
     const values = entries.map(([_, v]) => Number(v) || 0);
     const colors = labels.map((_, i) => accent[(i + 1) % accent.length]);
     const total = values.reduce((s, n) => s + n, 0);
-    return { labels, values, colors, total };
-  }, [hoveredCategory, categoryContribution]);
+    return { labels, values, colors, total, category };
+  }, [selectedCategory, hoveredCategory, categoryContribution]);
 
   const topCitiesPolar = useMemo(() => {
     const entries = Object.entries(topCities ?? {});
@@ -114,6 +115,8 @@ export function BusinessInsightsPlotly(): JSX.Element {
 
   // Handlers: onHover and onUnhover for category pie
   const handleCategoryHover = (evt: any) => {
+    // If a category is selected, do not change on hover
+    if (selectedCategory) return;
     // event.points[0].label contains the pie label
     const p = evt?.points?.[0];
     if (!p) return;
@@ -126,12 +129,26 @@ export function BusinessInsightsPlotly(): JSX.Element {
     }
   };
   const handleCategoryUnhover = () => {
-    setHoveredCategory(null);
-    setHoveredValue(null);
+    // Only clear hoveredCategory if no category is selected
+    if (!selectedCategory) {
+      setHoveredCategory(null);
+      setHoveredValue(null);
+    }
   };
+
+  const handleCategoryClick = (evt: any) => {
+    const p = evt?.points?.[0];
+    if (!p) return;
+    const label = (p.label ?? p.x ?? p.customdata) as string | undefined;
+    if (label) {
+      // clicking the same slice again deselects it
+      setSelectedCategory(prev => prev === label ? null : label);
+    }
+  }
 
   const formatKPI = (val: number | undefined | null) => {
     if (val === undefined || val === null) return '0';
+    if (val >= 1_000_000_000) return (val / 1_000_000_000).toFixed(1) + 'B';
     if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
     if (val >= 1_000) return (val / 1_000).toFixed(1) + 'k';
     return val.toLocaleString();
@@ -211,7 +228,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
         ) : (
           <>
             {/* KPI cards (unchanged) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
               {data?.kpis && (
                 <>
                   {[
@@ -221,18 +238,20 @@ export function BusinessInsightsPlotly(): JSX.Element {
                     <div key={index} className="relative group">
                       <div className={`absolute inset-0 bg-gradient-to-r ${stat.color} opacity-10 rounded-2xl blur-xl`}></div>
                       <div className="relative bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} opacity-10 flex items-center justify-center`}>
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center flex-shrink-0`}>
                             <stat.icon className="w-6 h-6 text-white" />
                           </div>
+                          <div>
+                            <div 
+                              className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-1`}
+                              title={stat.value?.toLocaleString()}
+                            >
+                              {stat.label === 'Total Revenue' ? `${formatKPI(stat.value)}` : formatKPI(stat.value)}
+                            </div>
+                            <div className="text-gray-400 text-sm">{stat.label}</div>
+                          </div>
                         </div>
-                        <div 
-                          className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-1`}
-                          title={stat.value?.toLocaleString()}
-                        >
-                          {stat.label === 'Total Revenue' ? `₹${formatKPI(stat.value)}` : formatKPI(stat.value)}
-                        </div>
-                        <div className="text-gray-400 text-sm">{stat.label}</div>
                       </div>
                     </div>
                   ))}
@@ -271,6 +290,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
                       style={{ width: '100%', height: '100%' }}
                       onHover={handleCategoryHover}
                       onUnhover={handleCategoryUnhover}
+                      onClick={handleCategoryClick}
                     />
                   ) : (
                     <div className="text-gray-400">No category data</div>
@@ -281,10 +301,10 @@ export function BusinessInsightsPlotly(): JSX.Element {
               {/* Right: Detail Pie (shows when hoveredCategory is present) */}
               <div className="bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">
-                  {hoveredCategory ? `Products in ${hoveredCategory}` : 'Hover a category'}
+                  {detailForCategory ? `Products in ${detailForCategory.category}` : 'Hover or select a category'}
                 </h3>
                 <div style={{ width: '100%', height: 360 }}>
-                  {hoveredCategory && detailForCategory ? (
+                  {detailForCategory ? (
                     <Plot
                       data={[
                         {
@@ -299,7 +319,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
                       ]}
                       layout={{
                         ...baseLayout,
-                        title: { text: `${hoveredCategory} — ${detailForCategory.total.toLocaleString()} sales` },
+                        title: { text: `${detailForCategory.category} — ${detailForCategory.total.toLocaleString()} sales` },
                         showlegend: false,
                         height: 340,
                       } as Partial<Layout>}
@@ -307,7 +327,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
                       style={{ width: '100%', height: '100%' }}
                     />
                   ) : (
-                    <div className="text-gray-400 flex items-center justify-center h-full">Hover over a category slice to view product breakdown</div>
+                    <div className="text-gray-400 flex items-center justify-center h-full">Hover over or click a category slice to view product breakdown</div>
                   )}
                 </div>
               </div>
@@ -341,7 +361,8 @@ export function BusinessInsightsPlotly(): JSX.Element {
                         },
                         showlegend: false,
                         title: { text: 'Top Cities' },
-                        height: 340,
+                        margin: { t: 70, b: 70 },
+                        height: 400,
                       } as Partial<Layout>}
                       config={plotConfig}
                       style={{ width: '100%', height: '100%' }}
@@ -357,7 +378,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
                 <div className="bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6">
                   <h3 className="text-xl font-semibold text-white mb-4">Top Products</h3>
                   <div style={{ width: '100%', height: Math.min(400, 60 + topProductsBar.names.length * 40) }}>
-                    <Plot
+                    <Plot 
                       data={[
                         {
                           type: 'bar' as const,
@@ -371,7 +392,7 @@ export function BusinessInsightsPlotly(): JSX.Element {
                         ...baseLayout,
                         xaxis: { tickfont: { color: axisColor }, gridColor },
                         yaxis: { tickfont: { color: axisColor }, automargin: true },
-                        margin: { t: 20, b: 40, l: 220, r: 20 },
+                        margin: { t: 40, b: 30, l: 100, r: 20 },
                         title: { text: 'Top Products' },
                         height: Math.min(400, 60 + topProductsBar.names.length * 40),
                       } as Partial<Layout>}

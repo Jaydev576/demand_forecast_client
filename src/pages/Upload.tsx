@@ -159,17 +159,16 @@ export function Upload() {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
-
+      const resJson = await res.json();
       if(!res.ok) {
-        showToast("Internal server error", "error")
+        showToast(resJson.detail || "Internal server error", "error");
+        return;
       }
-      const { upload_url, key, upload_id } = await res.json();
+      const { upload_url, key, upload_id } = resJson;
       // console.log(upload_url, key, upload_id)
 
       // Upload the file directly to S3
       await uploadToS3WithProgress(file, upload_url);
-
-      console.log("DB upload ID: ", upload_id);
       setUploadProgress(100);
       showToast("✅ CSV file Uploaded successfully!", "success");
       setFile(null);
@@ -188,7 +187,6 @@ export function Upload() {
         showToast("Internal server error", "error");
         throw new Error("Failed to notify FastAPI backend");
       }
-      console.log("Backend notified of upload completion")
 
     } catch (err) {
       console.error(err);

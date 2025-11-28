@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Filter, Calendar, Package, MapPin, DollarSign, Percent, Sparkles, IndianRupee } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Filter, Package, MapPin, Sparkles, Download } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
 import { Dialog } from '../components/Dialog';
 import { Card } from '../components/Card';
@@ -54,22 +54,6 @@ export function Forecast() {
   useEffect(() => {
     fetchFeatures();
     fetchForecastHistory();
-    const storedForecast = localStorage.getItem('lastForecastResult');
-    if (storedForecast) {
-      try {
-        const parsedForecast: ForecastData = JSON.parse(storedForecast);
-        setForecastResult(parsedForecast);
-        setFilters({
-          city: parsedForecast.city || '',
-          product: parsedForecast.product || '',
-          category: parsedForecast.product_category || '',
-        });
-        setShowResults(true);
-      } catch (e) {
-        console.error("Failed to parse stored forecast from localStorage", e);
-        localStorage.removeItem('lastForecastResult');
-      }
-    }
   }, []);
 
   const fetchForecastHistory = async () => {
@@ -147,8 +131,8 @@ export function Forecast() {
         num_days: forecastDays,
       };
 
-      const response = await fetch('/api/predict/',
-        { 
+      const response = await fetch('/api/forecast/',
+        {
           method: "POST", 
           headers: {
             "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
@@ -174,11 +158,10 @@ export function Forecast() {
       // console.log(res)
       setForecastResult(res);
       setShowResults(true);
-      localStorage.setItem('lastForecastResult', JSON.stringify(res));
+      localStorage.setItem('lastForecastResult', JSON.stringify(res.predictions));
 
       const updatedRecentForecasts = [res, ...recentForecasts.slice(0, 5)];
       setRecentForecasts(updatedRecentForecasts);
-      localStorage.setItem('recentForecasts', JSON.stringify(updatedRecentForecasts));
 
       showToast('Forecast generated successfully!', 'success');
     } catch (err: any) {
@@ -203,6 +186,36 @@ export function Forecast() {
   const handleViewForecast = (forecast: ForecastData) => {
     setSelectedForecast(forecast);
     setIsDialogOpen(true);
+  };
+
+  const handleDownloadCSV = () => {
+    if (!forecastResult) {
+      showToast('No forecast data to download.', 'info');
+      return;
+    }
+
+    const headers = ['date', 'predicted_quantity_sold'];
+    const csvRows = [
+      headers.join(','),
+      ...forecastResult.predictions.map(p => `${p.date.split('T')[0]},${p.predicted_quantity_sold}`)
+    ];
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `forecast-${forecastResult.product}-${forecastResult.city}-${date}.csv`;
+
+    const link = document.createElement('a');
+    if (link.download !== undefined) { // Feature detection
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   const overviewStats = (result: any) => result ? [
@@ -361,41 +374,6 @@ export function Forecast() {
                       ))}
                     </select>
                   </div>
-                  
-                  {/* <div>
-                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
-                      <IndianRupee className="w-4 h-4 animate-pulseConstellation" />
-                      Target Price
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={filters.price}
-                        onChange={(e) => setFilters({ ...filters, price: e.target.value })}
-                        placeholder="Price (in rupees)"
-                        className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Price filter"
-                      />
-                    </div>
-                  </div> */}
-  
-                  {/* <div>
-                    <label className="flex text-sm font-medium text-gray-200 mb-2 items-center gap-2">
-                      <Percent className="w-4 h-4 animate-pulseConstellation" />
-                      Discount
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={filters.discount}
-                        onChange={(e) => setFilters({ ...filters, discount: e.target.value })}
-                        placeholder="Discount (in %)"
-                        className="w-full px-3 py-2.5 bg-gray-950/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        aria-label="Discount filter"
-                      />
-                    </div>
-                  </div> */}
-                  
                 </div>
               )}
             </div>
@@ -482,7 +460,17 @@ export function Forecast() {
   
               {/* Results: Predictions Table */}
               <div className="bg-gray-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden animate-growIn">
-                  <h3 className="text-xl font-semibold text-white mb-6">Predictions</h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-semibold text-white">Predictions</h3>
+                    <button
+                      onClick={handleDownloadCSV}
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-300 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition-colors"
+                      aria-label="Download predictions as CSV"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download CSV</span>
+                    </button>
+                  </div>
                   <div className="overflow-auto max-h-96">
                       <table className="w-full text-sm text-left text-gray-400">
                           <thead className="text-xs text-gray-300 uppercase bg-gray-800/50">
@@ -504,6 +492,7 @@ export function Forecast() {
               </div>
             </div>
           )}
+
           {recentForecasts.length > 0 && (
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-white mb-6">Recent Forecasts</h2>
